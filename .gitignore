@@ -1,4 +1,4 @@
 tspenv/
-.csv
-.xlsx
+*.csv
+*.xlsx
 dataset_Prices/
