@@ -9,12 +9,17 @@ from sklearn.metrics import r2_score
 # FEATURES
 
 def extract(df, name):
-    df_name = df[["Date", f'{name}']]
+    df_name = df[["Date", f'{name}']].copy()
+    df_name.set_index('Date', inplace=True)
     df_name.rename(columns={f'{name}': 'return'}, inplace=True)
+    df_name.dropna(inplace=True)
     return df_name
 
 def Close_price(df, P0 = 100):
     return (1 + df["return"]).cumprod() * P0
+
+def log_return(df):
+    return np.log(df['Close'] / df['Close'].shift(1))
 
 def MACD(df):
     exp1 = df['Close'].ewm(span=12, adjust=False).mean()
@@ -40,9 +45,7 @@ def volatility_rolling(df, window):
 
 # WALK FORWARD CROSS VALIDATION 
 
-def WFCV(X, y, step_size, fold_size, model): 
-    step_size = 50
-    fold_size = 200
+def WFCV(X, y, model, step_size=50, fold_size=200): 
 
     predictions = []
     truths = []
