@@ -43,6 +43,15 @@ def Drawdown_current(df):
 def volatility_rolling(df, window):
     return df['log_return'].rolling(window).std()
 
+def feature_engineering(df):
+    df['MACD'] = MACD(df)
+    df['RSI'] = RSI(df)
+    df['Drawdown'] = Drawdown_current(df)
+    df['Volatility_20'] = volatility_rolling(df, 20)
+    df['Volatility_60'] = volatility_rolling(df, 60)
+    df.dropna(inplace=True)
+    return df
+
 # WALK FORWARD CROSS VALIDATION 
 
 def WFCV(X, y, model, step_size=50, fold_size=200): 
