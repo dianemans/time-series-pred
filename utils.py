@@ -92,42 +92,63 @@ def get_data():
         _cached_data = pd.read_csv('230216_returns.csv')
     return _cached_data
 
-def main(name, model):
+def main(name, model, plot = True): # plot = True --> show plots and print statements
 
     returns_all = get_data()
 
-    print("Processing", name, '...')
+    if plot: print("Processing", name, '...')
 
     df = extract(returns_all, name)
     df["Close"] = Close_price(df)
     df["log_return"] = log_return(df)
     feature_engineering(df)
 
-    print("Processing finished")
+    if plot: 
+        print("Processing finished")
 
-    print("Data after feature engineering:")
-    print(df.head())
+        print("Data after feature engineering:")
+        print(df.head())
 
-    plt.plot(df.index, df['log_return'])
-    plt.show()
+        plt.plot(df.index, df['log_return'])
+        plt.show()
 
     X = df.drop(columns=['return', 'log_return', 'Close'])
     y = df['log_return']
 
-    print("Starting Walk-Forward Cross-Validation...")
+    if plot: 
+        print("Starting Walk-Forward Cross-Validation...")
+
     y_pred, y_truth, mse_tab, r2 = WFCV(X, y, model)
-    print("WFCV finished.")
 
-    plt.figure(figsize=(12,6))
-    plt.plot(y_truth, label='True Log Returns', color='blue')
-    plt.plot(y_pred, label='RF Predicted Log Returns', color='red')
-    plt.legend()
-    plt.title(f'{name} Model Predictions vs True Log Returns')
-    plt.plot(mse_tab)
-    plt.show()
+    if plot: 
+        print("WFCV finished.")
 
-    print("Computing OLS regression on truth over pred...")
+        plt.figure(figsize=(12,6))
+        plt.plot(y_truth, label='True Log Returns', color='blue')
+        plt.plot(y_pred, label='RF Predicted Log Returns', color='red')
+        plt.legend()
+        plt.title(f'{name} Model Predictions vs True Log Returns')
+        plt.plot(mse_tab)
+        plt.show()
+
+    if plot: 
+        print("Computing OLS regression on truth over pred...")
+
     reg = sm.OLS(y_truth, sm.add_constant(y_pred)).fit()
-    print("Regression complete !")
-    print(reg.summary())
+
+    if plot: 
+        print("Regression complete !")
+        print(reg.summary())
+
+    results = {
+        'name': name,
+        'MSE': np.mean(mse_tab),
+        'OLS_R2': reg.rsquared,          
+        'OLS_Intercept': reg.params[0],  
+        'OLS_Slope': reg.params[1],     
+        'OLS_P_Value_Intercept': reg.pvalues[0],
+        'P_Value_Slope': reg.pvalues[1],       
+    }
+
+    return results
 
