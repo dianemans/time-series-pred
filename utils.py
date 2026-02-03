@@ -1,3 +1,6 @@
+# Cache
+_cached_data = None
+
 # Import 
 
 import numpy as np
@@ -5,6 +8,7 @@ import pandas as pd
 from sklearn.metrics import mean_squared_error
 import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score
+import statsmodels.api as sm
 
 # FEATURES
 
@@ -13,6 +17,7 @@ def extract(df, name):
     df_name.set_index('Date', inplace=True)
     df_name.rename(columns={f'{name}': 'return'}, inplace=True)
     df_name.dropna(inplace=True)
+    df_name.index = pd.to_datetime(df_name.index)
     return df_name
 
 def Close_price(df, P0 = 100):
@@ -49,8 +54,10 @@ def feature_engineering(df):
     df['Drawdown'] = Drawdown_current(df)
     df['Volatility_20'] = volatility_rolling(df, 20)
     df['Volatility_60'] = volatility_rolling(df, 60)
+    lags = list(range(1, 11))
+    for lag in lags:
+        df[f'lag_{lag}'] = df['log_return'].shift(lag)
     df.dropna(inplace=True)
-    return df
 
 # WALK FORWARD CROSS VALIDATION 
 
@@ -77,7 +84,50 @@ def WFCV(X, y, model, step_size=50, fold_size=200):
 
     return np.array(predictions), np.array(truths), np.array(mse_tab), r2_score(truths, predictions)
 
+# main 
+def get_data():
+    global _cached_data
+    if _cached_data is None:
+        print("--- Loading dataset for the first time ---")
+        _cached_data = pd.read_csv('230216_returns.csv')
+    return _cached_data
 
+def main(name, model):
 
+    returns_all = get_data()
 
+    print("Processing", name, '...')
+
+    df = extract(returns_all, name)
+    df["Close"] = Close_price(df)
+    df["log_return"] = log_return(df)
+    feature_engineering(df)
+
+    print("Processing finished")
+
+    print("Data after feature engineering:")
+    print(df.head())
+
+    plt.plot(df.index, df['log_return'])
+    plt.show()
+
+    X = df.drop(columns=['return', 'log_return', 'Close'])
+    y = df['log_return']
+
+    print("Starting Walk-Forward Cross-Validation...")
+    y_pred, y_truth, mse_tab, r2 = WFCV(X, y, model)
+    print("WFCV finished.")
+
+    plt.figure(figsize=(12,6))
+    plt.plot(y_truth, label='True Log Returns', color='blue')
+    plt.plot(y_pred, label='RF Predicted Log Returns', color='red')
+    plt.legend()
+    plt.title(f'{name} Model Predictions vs True Log Returns')
+    plt.plot(mse_tab)
+    plt.show()
+
+    print("Computing OLS regression on truth over pred...")
+    reg = sm.OLS(y_truth, sm.add_constant(y_pred)).fit()
+    print("Regression complete !")
+    print(reg.summary())
 
