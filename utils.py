@@ -57,7 +57,8 @@ def feature_engineering(df):
     lags = list(range(1, 11))
     for lag in lags:
         df[f'lag_{lag}'] = df['log_return'].shift(lag)
-    df.dropna(inplace=True)
+    df.dropna()
+    return df
 
 # WALK FORWARD CROSS VALIDATION 
 
@@ -68,7 +69,7 @@ def WFCV(X, y, model, step_size=50, fold_size=200):
     mse_tab = []
 
     for start in range(0, len(X) - fold_size - step_size, step_size):
-        train_X = X.iloc[start : start + fold_size]
+        train_X = X.iloc[start : start + fold_size] 
         train_y = y.iloc[start : start + fold_size]
         test_X = X.iloc[start + fold_size : start + fold_size + step_size]
         test_y = y.iloc[start + fold_size : start + fold_size + step_size]    
@@ -93,16 +94,16 @@ def get_data():
         _cached_data = pd.read_csv('230216_returns.csv')
     return _cached_data
 
-def main(name, model, plot = True): # plot = True --> show plots and print statements
-
+def main(name_ticker, model, plot = True): # plot = True --> show plots and print statements + changer le nom: plus explicite
+    # généraliser pour tous les modèles (features etc...)
     returns_all = get_data()
 
-    if plot: print("Processing", name, '...')
+    if plot: print("Processing", name_ticker, '...')
 
-    df = extract(returns_all, name)
+    df = extract(returns_all, name_ticker)
     df["Close"] = Close_price(df)
     df["log_return"] = log_return(df)
-    feature_engineering(df)
+    df = feature_engineering(df)
 
     if plot: 
         print("Processing finished")
@@ -128,7 +129,7 @@ def main(name, model, plot = True): # plot = True --> show plots and print state
         plt.plot(y_truth, label='True Log Returns', color='blue')
         plt.plot(y_pred, label='RF Predicted Log Returns', color='red')
         plt.legend()
-        plt.title(f'{name} Model Predictions vs True Log Returns')
+        plt.title(f'{name_ticker} Model Predictions vs True Log Returns')
         plt.plot(mse_tab)
         plt.show()
 
@@ -142,7 +143,7 @@ def main(name, model, plot = True): # plot = True --> show plots and print state
         print(reg.summary())
 
     results = {
-        'name': name,
+        'name': name_ticker,
         'MSE': np.mean(mse_tab),
         'OLS_R2': reg.rsquared,          
         'OLS_Intercept': reg.params[0],  
