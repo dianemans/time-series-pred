@@ -57,7 +57,7 @@ def feature_engineering(df):
     lags = list(range(1, 11))
     for lag in lags:
         df[f'lag_{lag}'] = df['log_return'].shift(lag)
-    df.dropna()
+    df.dropna(inplace=True)
     return df
 
 # WALK FORWARD CROSS VALIDATION 
@@ -91,7 +91,7 @@ def get_data():
     global _cached_data
     if _cached_data is None:
         print("--- Loading dataset for the first time ---")
-        _cached_data = pd.read_csv('230216_returns.csv')
+        _cached_data = pd.read_csv('Datasets/returns_all.csv')
     return _cached_data
 
 def main(name_ticker, model, plot = True): # plot = True --> show plots and print statements + changer le nom: plus explicite
