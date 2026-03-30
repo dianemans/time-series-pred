@@ -13,16 +13,6 @@ import statsmodels.api as sm
 # FEATURES
 
 def extract(df, name):
-    """
-    Extracts data for a specific asset, formats the date index, and handles missing values.
-
-    Args:
-        df (pd.DataFrame): The raw DataFrame containing a 'Date' column and asset returns.
-        name (str): The name of the column (ticker) to extract.
-
-    Returns:
-        pd.DataFrame: A cleaned DataFrame with the date as a datetime index and a 'return' column.
-    """
     df_name = df[["Date", f'{name}']].copy()
     df_name.set_index('Date', inplace=True)
     df_name.rename(columns={f'{name}': 'return'}, inplace=True)
@@ -33,44 +23,16 @@ def extract(df, name):
 
 
 def Close_price(df, P0 = 100):
-    """
-    Reconstructs a simulated closing price series from simple returns.
-
-    Args:
-        df (pd.DataFrame): DataFrame containing a 'return' column.
-        P0 (float, optional): The initial base price. Defaults to 100.
-
-    Returns:
-        pd.Series: The calculated closing price series (cumulative product of returns).
-    """
     return (1 + df["return"]).cumprod() * P0
 
 
 
 def log_return(df):
-    """
-    Calculates the logarithmic return for each period.
-
-    Args:
-        df (pd.DataFrame): DataFrame containing a 'Close' column.
-
-    Returns:
-        pd.Series: The calculated logarithmic returns.
-    """
     return np.log(df['Close'] / df['Close'].shift(1))
 
 
 
 def MACD(df):
-    """
-    Calculates the Moving Average Convergence Divergence (MACD).
-
-    Args:
-        df (pd.DataFrame): DataFrame containing a 'Close' column.
-
-    Returns:
-        pd.Series: The calculated MACD values.
-    """
     exp1 = df['Close'].ewm(span=12, adjust=False).mean()
     exp2 = df['Close'].ewm(span=26, adjust=False).mean()
     macd = exp1 - exp2
@@ -79,16 +41,6 @@ def MACD(df):
 
 
 def RSI(df, period=14):
-    """
-    Calculates the Relative Strength Index (RSI) over a given period.
-
-    Args:
-        df (pd.DataFrame): DataFrame containing a 'Close' column.
-        period (int, optional): The calculation period (rolling window). Defaults to 14.
-
-    Returns:
-        pd.Series: The series of RSI values (oscillating between 0 and 100).
-    """
     delta = df['Close'].diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
@@ -99,15 +51,6 @@ def RSI(df, period=14):
 
 
 def Drawdown_current(df):
-    """
-    Calculates the daily drawdown (loss compared to the historical all-time high).
-
-    Args:
-        df (pd.DataFrame): DataFrame containing a 'Close' column.
-
-    Returns:
-        pd.Series: The series of drawdown percentages (negative or zero values).
-    """
     roll_max = df['Close'].cummax()
     daily_drawdown = df['Close'] / roll_max - 1.0
     return daily_drawdown
@@ -115,16 +58,6 @@ def Drawdown_current(df):
 
 
 def volatility_rolling(df, window):
-    """
-    Calculates the rolling historical volatility (standard deviation of log returns).
-
-    Args:
-        df (pd.DataFrame): DataFrame containing a 'log_return' column.
-        window (int): The size of the rolling window for the standard deviation calculation.
-
-    Returns:
-        pd.Series: The series of rolling volatility.
-    """
     return df['log_return'].rolling(window).std()
 
 
@@ -217,16 +150,9 @@ def WFCV(X, y, model, step_size=50, fold_size=200):
 
     return np.array(predictions), np.array(truths), np.array(mse_tab), r2_score(truths, predictions)
 
+# main 
 
 def get_data():
-    """
-    Loads the dataset and caches it in memory to avoid redundant disk reads.
-    
-    Utilizes a global `_cached_data` variable.
-    
-    Returns:
-        pd.DataFrame: The loaded dataset containing the asset returns.
-    """
     global _cached_data
     if _cached_data is None:
         print("--- Loading dataset for the first time ---")
