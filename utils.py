@@ -1,6 +1,3 @@
-# Cache
-_cached_data = None
-
 # Import 
 
 import numpy as np
@@ -218,24 +215,8 @@ def WFCV(X, y, model, step_size=50, fold_size=200):
     return np.array(predictions), np.array(truths), np.array(mse_tab), r2_score(truths, predictions)
 
 
-def get_data():
-    """
-    Loads the dataset and caches it in memory to avoid redundant disk reads.
-    
-    Utilizes a global `_cached_data` variable.
-    
-    Returns:
-        pd.DataFrame: The loaded dataset containing the asset returns.
-    """
-    global _cached_data
-    if _cached_data is None:
-        print("--- Loading dataset for the first time ---")
-        _cached_data = pd.read_csv('Datasets/returns_all.csv')
-    return _cached_data
 
-
-
-def stats_forecasting(name_ticker, model, plot = True): # plot = True --> show plots and print statements + changer le nom: plus explicite
+def stats_forecasting(df_all, name_ticker, model, feature_engineering, plot = True): # plot = True --> show plots and print statements + changer le nom: plus explicite
     """
     Executes the full end-to-end pipeline: data extraction, feature engineering, 
     model training/evaluation (WFCV), and performance analysis.
@@ -243,6 +224,7 @@ def stats_forecasting(name_ticker, model, plot = True): # plot = True --> show p
     Args:
         name_ticker (str): The ticker symbol or column name of the asset to process.
         model (sklearn-like estimator): The model to train and evaluate.
+        feature_engineering (function): The function to apply for feature engineering on the DataFrame.
         plot (bool, optional): If True, displays progress prints and matplotlib charts. Defaults to True.
         
     Returns:
@@ -255,14 +237,13 @@ def stats_forecasting(name_ticker, model, plot = True): # plot = True --> show p
             - 'OLS_P_Value_Intercept': Statistical significance of the intercept.
             - 'P_Value_Slope': Statistical significance of the slope.
     """
-    returns_all = get_data()
 
     if plot: print("Processing", name_ticker, '...')
 
-    df = extract(returns_all, name_ticker)
+    df = extract(df_all, name_ticker)
     df["Close"] = Close_price(df)
     df["log_return"] = log_return(df)
-    df = feature_engineering_rf(df)
+    df = feature_engineering(df)
 
     if plot: 
         print("Processing finished")
