@@ -156,6 +156,7 @@ def stats_forecasting(df_all, name_ticker, model, feature_engineering, plot = Tr
     model training/evaluation (WFCV), and performance analysis.
     
     Args:
+        df_all (pd.DataFrame): The complete DataFrame containing all tickers and their returns.
         name_ticker (str): The ticker symbol or column name of the asset to process.
         model (sklearn-like estimator): The model to train and evaluate.
         feature_engineering (function): The function to apply for feature engineering on the DataFrame.
