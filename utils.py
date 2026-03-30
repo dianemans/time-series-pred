@@ -30,6 +30,8 @@ def extract(df, name):
     df_name.index = pd.to_datetime(df_name.index)
     return df_name
 
+
+
 def Close_price(df, P0 = 100):
     """
     Reconstructs a simulated closing price series from simple returns.
@@ -43,6 +45,8 @@ def Close_price(df, P0 = 100):
     """
     return (1 + df["return"]).cumprod() * P0
 
+
+
 def log_return(df):
     """
     Calculates the logarithmic return for each period.
@@ -54,6 +58,8 @@ def log_return(df):
         pd.Series: The calculated logarithmic returns.
     """
     return np.log(df['Close'] / df['Close'].shift(1))
+
+
 
 def MACD(df):
     """
@@ -69,6 +75,8 @@ def MACD(df):
     exp2 = df['Close'].ewm(span=26, adjust=False).mean()
     macd = exp1 - exp2
     return macd
+
+
 
 def RSI(df, period=14):
     """
@@ -88,6 +96,8 @@ def RSI(df, period=14):
     rsi = 100 - (100 / (1 + rs))
     return rsi  
 
+
+
 def Drawdown_current(df):
     """
     Calculates the daily drawdown (loss compared to the historical all-time high).
@@ -102,6 +112,8 @@ def Drawdown_current(df):
     daily_drawdown = df['Close'] / roll_max - 1.0
     return daily_drawdown
 
+
+
 def volatility_rolling(df, window):
     """
     Calculates the rolling historical volatility (standard deviation of log returns).
@@ -115,7 +127,9 @@ def volatility_rolling(df, window):
     """
     return df['log_return'].rolling(window).std()
 
-def feature_engineering(df):
+
+
+def feature_engineering_rf(df):
     """
     Applies all transformations and technical indicators to create model features from previous
     functions. This includes MACD, RSI, Drawdown, and rolling volatility.
@@ -137,6 +151,25 @@ def feature_engineering(df):
         df[f'lag_{lag}'] = df['log_return'].shift(lag)
     df.dropna(inplace=True)
     return df
+
+def feature_engineering_arp(df, p):
+    """
+    Applies transformations to create features for AR modeling, including lags of log returns.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing at least a 'log_return' column.
+        p (int): The order of the AR model (number of lags to include).
+
+    Returns:
+        pd.DataFrame: The enriched DataFrame with lag features for AR, without missing values.
+    """
+    lags = list(range(1, p + 1))
+    for lag in lags:
+        df[f'lag_{lag}'] = df['log_return'].shift(lag)
+    df.dropna(inplace=True)
+    return df
+
+
 
 # WALK FORWARD CROSS VALIDATION 
 
@@ -200,14 +233,16 @@ def get_data():
         _cached_data = pd.read_csv('Datasets/returns_all.csv')
     return _cached_data
 
-def main(name_ticker, model, plot = True): # plot = True --> show plots and print statements + changer le nom: plus explicite
+
+
+def stats_forecasting(name_ticker, model, plot = True): # plot = True --> show plots and print statements + changer le nom: plus explicite
     """
     Executes the full end-to-end pipeline: data extraction, feature engineering, 
-    model training/evaluation (WFCV), and performance analysis (Mincer-Zarnowitz OLS regression).
+    model training/evaluation (WFCV), and performance analysis.
     
     Args:
         name_ticker (str): The ticker symbol or column name of the asset to process.
-        model (sklearn-like estimator): The machine learning model to train and evaluate.
+        model (sklearn-like estimator): The model to train and evaluate.
         plot (bool, optional): If True, displays progress prints and matplotlib charts. Defaults to True.
         
     Returns:
@@ -215,10 +250,10 @@ def main(name_ticker, model, plot = True): # plot = True --> show plots and prin
             - 'name': The processed ticker name.
             - 'MSE': Average Mean Squared Error across all folds.
             - 'OLS_R2': R-squared from the OLS regression (explained variance).
-            - 'OLS_Intercept': Alpha (bias) of the predictions.
-            - 'OLS_Slope': Beta (amplitude/calibration) of the predictions.
-            - 'OLS_P_Value_Intercept': Statistical significance of the alpha (bias).
-            - 'P_Value_Slope': Statistical significance of the beta (signal validity).
+            - 'OLS_Intercept': Intercept of the predictions.
+            - 'OLS_Slope': Slope of the predictions.
+            - 'OLS_P_Value_Intercept': Statistical significance of the intercept.
+            - 'P_Value_Slope': Statistical significance of the slope.
     """
     returns_all = get_data()
 
@@ -227,7 +262,7 @@ def main(name_ticker, model, plot = True): # plot = True --> show plots and prin
     df = extract(returns_all, name_ticker)
     df["Close"] = Close_price(df)
     df["log_return"] = log_return(df)
-    df = feature_engineering(df)
+    df = feature_engineering_rf(df)
 
     if plot: 
         print("Processing finished")
