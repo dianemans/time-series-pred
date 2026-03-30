@@ -147,7 +147,7 @@ def WFCV(X, y, model, step_size=50, fold_size=200):
 
     return np.array(predictions), np.array(truths), np.array(mse_tab), r2_score(truths, predictions)
 
-# main 
+# stats_forecasting 
 
 
 def stats_forecasting(df_all, name_ticker, model, feature_engineering, plot = True): # plot = True --> show plots and print statements + changer le nom: plus explicite
