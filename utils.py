@@ -2,7 +2,9 @@
 
 import numpy as np
 import pandas as pd
+from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score
 import statsmodels.api as sm
@@ -82,6 +84,23 @@ def feature_engineering_rf(df):
     df.dropna(inplace=True)
     return df
 
+
+def feature_engineering_lstm(df):
+    """
+    Features pour LSTM : retards longs de log_return + volatilités + RSI.
+    Évite d’empiler MACD/drawdown avec une fenêtre temporelle déjà riche en dynamique de prix,
+    ce qui réduit le bruit et la redondance pour un petit jeu par pli WFCV.
+    """
+    df = df.copy()
+    df["RSI"] = RSI(df)
+    df["Volatility_20"] = volatility_rolling(df, 20)
+    df["Volatility_60"] = volatility_rolling(df, 60)
+    for lag in range(1, 21):
+        df[f"lag_{lag}"] = df["log_return"].shift(lag)
+    df.dropna(inplace=True)
+    return df
+
+
 def feature_engineering_arp(df, p):
     """
     Applies transformations to create features for AR modeling, including lags of log returns.
@@ -99,6 +118,125 @@ def feature_engineering_arp(df, p):
     df.dropna(inplace=True)
     return df
 
+
+class LSTMRegressor(BaseEstimator, RegressorMixin):
+    """LSTM pour `WFCV` / `stats_forecasting` : séquences sur `lookback` pas, early stopping interne."""
+
+    def __init__(
+        self,
+        lookback=25,
+        lstm_units=56,
+        dropout=0.08,
+        l2_reg=1e-5,
+        max_epochs=100,
+        batch_size=32,
+        val_frac=0.12,
+        early_stop_patience=12,
+        verbose=0,
+        random_state=42,
+    ):
+        self.lookback = lookback
+        self.lstm_units = lstm_units
+        self.dropout = dropout
+        self.l2_reg = l2_reg
+        self.max_epochs = max_epochs
+        self.batch_size = batch_size
+        self.val_frac = val_frac
+        self.early_stop_patience = early_stop_patience
+        self.verbose = verbose
+        self.random_state = random_state
+
+    def fit(self, X, y):
+        from tensorflow.keras.models import Sequential
+        from tensorflow.keras.layers import Input, LSTM as KerasLSTM, Dense, Dropout
+        from tensorflow.keras.regularizers import l2
+        from tensorflow.keras.callbacks import EarlyStopping
+        import tensorflow as tf
+
+        X = X if isinstance(X, pd.DataFrame) else pd.DataFrame(X)
+        y = np.asarray(y).reshape(-1)
+        L = self.lookback
+        if len(X) <= L:
+            raise ValueError(f"Besoin de plus de {L} lignes pour entraîner (reçu {len(X)}).")
+
+        self.n_features_in_ = X.shape[1]
+        self.scaler_X_ = StandardScaler()
+        self.scaler_y_ = StandardScaler()
+
+        X_scaled = self.scaler_X_.fit_transform(X.values)
+        y_scaled = self.scaler_y_.fit_transform(y.reshape(-1, 1)).ravel()
+
+        X_seq, y_seq = [], []
+        for i in range(L, len(X_scaled)):
+            X_seq.append(X_scaled[i - L : i])
+            y_seq.append(y_scaled[i])
+        X_seq = np.asarray(X_seq, dtype=np.float32)
+        y_seq = np.asarray(y_seq, dtype=np.float32)
+
+        if self.random_state is not None:
+            tf.random.set_seed(int(self.random_state))
+            np.random.seed(int(self.random_state))
+
+        reg = l2(self.l2_reg)
+        val_n = max(int(np.ceil(len(X_seq) * self.val_frac)), 2)
+        X_tr, X_va = X_seq[:-val_n], X_seq[-val_n:]
+        y_tr, y_va = y_seq[:-val_n], y_seq[-val_n:]
+
+        self.model_ = Sequential(
+            [
+                Input(shape=(L, self.n_features_in_)),
+                KerasLSTM(
+                    self.lstm_units,
+                    return_sequences=False,
+                    kernel_regularizer=reg,
+                    recurrent_regularizer=reg,
+                ),
+                Dropout(self.dropout),
+                Dense(1, kernel_regularizer=reg),
+            ]
+        )
+        self.model_.compile(
+            optimizer=tf.keras.optimizers.Adam(learning_rate=8e-4),
+            loss="mse",
+        )
+        cb = [
+            EarlyStopping(
+                monitor="val_loss",
+                patience=self.early_stop_patience,
+                restore_best_weights=True,
+                min_delta=1e-7,
+            )
+        ]
+        bs = min(self.batch_size, len(X_tr))
+        batch_sz = max(1, min(bs, len(X_tr)))
+        self.model_.fit(
+            X_tr,
+            y_tr,
+            validation_data=(X_va, y_va),
+            epochs=self.max_epochs,
+            batch_size=batch_sz,
+            callbacks=cb,
+            verbose=self.verbose,
+            shuffle=False,
+        )
+
+        self._tail_X_ = X.values[-L:, :].copy()
+        return self
+
+    def predict(self, X):
+        if not hasattr(self, "_tail_X_"):
+            raise RuntimeError("Appeler fit avant predict.")
+        X = X if isinstance(X, pd.DataFrame) else pd.DataFrame(X)
+        L = self.lookback
+        stack = np.vstack([self._tail_X_, X.values])
+        X_scaled = self.scaler_X_.transform(stack)
+
+        preds = []
+        for t in range(len(X)):
+            seq = X_scaled[t : t + L].reshape(1, L, self.n_features_in_)
+            preds.append(self.model_.predict(seq, verbose=0)[0, 0])
+        out = np.asarray(preds, dtype=np.float64).reshape(-1, 1)
+        return self.scaler_y_.inverse_transform(out).ravel()
 
 
 # WALK FORWARD CROSS VALIDATION 
