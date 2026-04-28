@@ -3,3 +3,5 @@ tspenv/
 *.xlsx
 dataset_Prices/
 .venv/
+
+#!Datasets/returns_all.csv
