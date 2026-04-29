@@ -267,11 +267,14 @@ def WFCV(X, y, model, step_size=50, fold_size=200):
     truths = []
     mse_tab = []
 
-    for start in range(0, len(X) - fold_size - step_size, step_size):
+    for start in range(0, len(X) - fold_size, step_size):
         train_X = X.iloc[start : start + fold_size] 
         train_y = y.iloc[start : start + fold_size]
         test_X = X.iloc[start + fold_size : start + fold_size + step_size]
-        test_y = y.iloc[start + fold_size : start + fold_size + step_size]    
+        test_y = y.iloc[start + fold_size : start + fold_size + step_size]   
+
+        if len(test_X) == 0:
+            break 
 
         model.fit(train_X, train_y)
         pred = model.predict(test_X)        
@@ -279,7 +282,7 @@ def WFCV(X, y, model, step_size=50, fold_size=200):
         predictions.extend(pred)
         truths.extend(test_y)
 
-        mse = mean_squared_error(truths, predictions)
+        mse = mean_squared_error(test_y, pred)
         mse_tab.append(mse)
 
     return np.array(predictions), np.array(truths), np.array(mse_tab), r2_score(truths, predictions)
