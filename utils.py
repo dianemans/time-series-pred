@@ -92,11 +92,10 @@ def feature_engineering_lstm(df):
     ce qui réduit le bruit et la redondance pour un petit jeu par pli WFCV.
     """
     df = df.copy()
+    df['MACD'] = MACD(df)
     df["RSI"] = RSI(df)
     df["Volatility_20"] = volatility_rolling(df, 20)
     df["Volatility_60"] = volatility_rolling(df, 60)
-    for lag in range(1, 21):
-        df[f"lag_{lag}"] = df["log_return"].shift(lag)
     df.dropna(inplace=True)
     return df
 
