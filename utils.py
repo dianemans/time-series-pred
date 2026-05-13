@@ -290,7 +290,7 @@ def WFCV(X, y, model, step_size=50, fold_size=200):
 # stats_forecasting 
 
 
-def stats_forecasting(df_all, name_ticker, model, feature_engineering, plot = True): # plot = True --> show plots and print statements + changer le nom: plus explicite
+def stats_forecasting(df_all, name_ticker, model, feature_engineering, step_size=50, fold_size=200, plot = True): # plot = True --> show plots and print statements + changer le nom: plus explicite
     """
     Executes the full end-to-end pipeline: data extraction, feature engineering, 
     model training/evaluation (WFCV), and performance analysis.
@@ -304,7 +304,7 @@ def stats_forecasting(df_all, name_ticker, model, feature_engineering, plot = Tr
         
     Returns:
         dict: A dictionary containing the evaluation metrics of the model:
-            - 'name': The processed ticker name.
+            - 'SYMBOL': The processed ticker name.
             - 'MSE': Average Mean Squared Error across all folds.
             - 'OLS_R2': R-squared from the OLS regression (explained variance).
             - 'OLS_Intercept': Intercept of the predictions.
@@ -335,7 +335,7 @@ def stats_forecasting(df_all, name_ticker, model, feature_engineering, plot = Tr
     if plot: 
         print("Starting Walk-Forward Cross-Validation...")
 
-    y_pred, y_truth, mse_tab, r2 = WFCV(X, y, model)
+    y_pred, y_truth, mse_tab, r2 = WFCV(X, y, model, step_size, fold_size)
 
     if plot: 
         print("WFCV finished.")
@@ -358,7 +358,7 @@ def stats_forecasting(df_all, name_ticker, model, feature_engineering, plot = Tr
         print(reg.summary())
 
     results = {
-        'name': name_ticker,
+        'SYMBOL': name_ticker,
         'MSE': np.mean(mse_tab),
         'OLS_R2': reg.rsquared,          
         'OLS_Intercept': reg.params[0],  
