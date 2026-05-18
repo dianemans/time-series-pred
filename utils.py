@@ -290,7 +290,7 @@ def WFCV(X, y, model, step_size=50, fold_size=200):
 # stats_forecasting 
 
 
-def stats_forecasting(df_all, name_ticker, model, feature_engineering, step_size=50, fold_size=200, plot = True): # plot = True --> show plots and print statements + changer le nom: plus explicite
+def stats_forecasting(df_all, name_ticker, model, feature_engineering, step_size=50, fold_size=250, plot = True): # plot = True --> show plots and print statements + changer le nom: plus explicite
     """
     Executes the full end-to-end pipeline: data extraction, feature engineering, 
     model training/evaluation (WFCV), and performance analysis.
